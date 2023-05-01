@@ -76,7 +76,6 @@
 
 #include "mysys_err.h" //TIANMU UPGRADE
 
-using std::max;
 using std::min;
 using binary_log::checksum_crc32;
 
@@ -3893,14 +3892,14 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
    from the select tables. This order may differ on master and slave. We
    therefore mark it as unsafe.
   */
-  if (select_field_count > 0 && auto_increment)
-  thd->lex->set_stmt_unsafe(LEX::BINLOG_STMT_UNSAFE_CREATE_SELECT_AUTOINC);
-
+  if (select_field_count > 0 && auto_increment) {
+    thd->lex->set_stmt_unsafe(LEX::BINLOG_STMT_UNSAFE_CREATE_SELECT_AUTOINC);
+  }
   /* Create keys */
 
   List_iterator<Key> key_iterator(alter_info->key_list);
   List_iterator<Key> key_iterator2(alter_info->key_list);
-  uint key_parts=0, fk_key_count=0;
+  uint key_parts=0;
   bool primary_key=0,unique_key=0;
   Key *key, *key2;
   uint tmp, key_number;
@@ -3916,7 +3915,6 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
                         "(none)" , key->type));
     if (key->type == KEYTYPE_FOREIGN)
     {
-      fk_key_count++;
       if (((Foreign_key *)key)->validate(alter_info->create_list))
         DBUG_RETURN(TRUE);
       Foreign_key *fk_key= (Foreign_key*) key;
@@ -3935,7 +3933,7 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
     tmp=file->max_key_parts();
     my_bool tianmu_no_key_error = thd->slave_thread ? global_system_variables.tianmu_no_key_error : 
                                                                     thd->variables.tianmu_no_key_error;
-    if ((create_info->db_type->db_type == DB_TYPE_TIANMU)) {
+    if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
       if ((file->ha_table_flags() & HA_NON_SECONDARY_KEY) &&
           (key->type == KEYTYPE_MULTIPLE) && !tianmu_no_key_error) {
         my_error(ER_TIANMU_NOT_SUPPORTED_SECONDARY_INDEX, MYF(0));
@@ -4039,27 +4037,29 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
 
     switch (key->type) {
     case KEYTYPE_MULTIPLE:
-	key_info->flags= 0;
-	break;
+      key_info->flags = 0;
+      break;
     case KEYTYPE_FULLTEXT:
-	key_info->flags= HA_FULLTEXT;
-	if ((key_info->parser_name= &key->key_create_info.parser_name)->str)
-          key_info->flags|= HA_USES_PARSER;
-        else
-          key_info->parser_name= 0;
-	break;
+      key_info->flags = HA_FULLTEXT;
+      if ((key_info->parser_name = &key->key_create_info.parser_name)->str) {
+        key_info->flags |= HA_USES_PARSER;
+      } else {
+        key_info->parser_name = 0;
+      }
+      break;
     case KEYTYPE_SPATIAL:
-	key_info->flags= HA_SPATIAL;
-	break;
+      key_info->flags = HA_SPATIAL;
+      break;
     case KEYTYPE_FOREIGN:
-      key_number--;				// Skip this key
+      key_number--; // Skip this key
       continue;
     default:
       key_info->flags = HA_NOSAME;
       break;
     }
-    if (key->generated)
-      key_info->flags|= HA_GENERATED_KEY;
+    if (key->generated) {
+      key_info->flags |= HA_GENERATED_KEY;
+    }
 
     key_info->algorithm= key->key_create_info.algorithm;
     key_info->user_defined_key_parts=(uint8) key->columns.elements;
@@ -8161,26 +8161,25 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
           goto err;
 	}
 
-	if ((def->def=alter->def))              // Use new default
+        if ((def->def = alter->def)) // Use new default
         {
-          def->flags&= ~NO_DEFAULT_VALUE_FLAG;
+          def->flags &= ~NO_DEFAULT_VALUE_FLAG;
           /*
             The defaults are explicitly altered for the TIMESTAMP/DATETIME
             field, through SET DEFAULT. Hence, set the unireg check
             appropriately.
           */
-          if (real_type_with_now_as_default(def->sql_type))
-          {
+          if (real_type_with_now_as_default(def->sql_type)) {
             if (def->unireg_check == Field::TIMESTAMP_DNUN_FIELD)
-              def->unireg_check= Field::TIMESTAMP_UN_FIELD;
+              def->unireg_check = Field::TIMESTAMP_UN_FIELD;
             else if (def->unireg_check == Field::TIMESTAMP_DN_FIELD)
-              def->unireg_check= Field::NONE;
+              def->unireg_check = Field::NONE;
           }
+        } else {
+          def->flags |= NO_DEFAULT_VALUE_FLAG;
         }
-        else
-          def->flags|= NO_DEFAULT_VALUE_FLAG;
 
-	alter_it.remove();
+        alter_it.remove();
       }
     }
   }
